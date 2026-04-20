@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>義肢套即時監測平台</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f0f2f5; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding-top: 50px; 
+            margin: 0;
+        }
+        h2 { color: #2c3e50; margin-bottom: 30px; }
+        .dashboard { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+        .card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1); 
+            text-align: center; 
+            width: 180px; 
+            transition: transform 0.3s ease;
+        }
+        .card:hover { transform: translateY(-5px); }
+        .value { font-size: 3em; font-weight: bold; margin: 10px 0; transition: color 0.3s ease; }
+        
+        /* 預設顏色 */
+        .temp-default { color: #e74c3c; }
+        .hum-default { color: #3498db; }
+        
+        .label { color: #7f8c8d; font-size: 1.1em; font-weight: 500; }
+        .unit { color: #95a5a6; font-size: 0.8em; margin-left: 5px; }
+        .time { margin-top: 30px; color: #95a5a6; font-size: 0.9em; background: #fff; padding: 5px 15px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+    <h2>截肢套微氣候即時監測系統</h2>
+    
+    <div class="dashboard">
+        <div class="card">
+            <div class="label">目前溫度</div>
+            <div id="temp" class="value temp-default">--</div>
+            <div class="label">°C</div>
+        </div>
+
+        <div class="card">
+            <div class="label">目前濕度</div>
+            <div id="hum" class="value hum-default">--</div>
+            <div class="label">%</div>
+        </div>
+    </div>
+
+    <div id="update-time" class="time">最後更新：載入中...</div>
+
+    <script>
+        // ==========================================
+        // *** 請在這裡填入你的 ThingSpeak 資料 ***
+        const channelID = "2159361"; 
+        const readKey = "5EJNKI3GHNGVBTO9"; 
+        // ==========================================
+
+        const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${readKey}&results=1`;
+
+        function updateDashboard() {
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    const feed = data.feeds[0];
+                    if (feed) {
+                        // 1. 抓取並轉換數據
+                        const temperature = parseFloat(feed.field1);
+                        const humidity = parseFloat(feed.field2);
+
+                        // 2. 更新網頁文字
+                        const tempElement = document.getElementById('temp');
+                        const humElement = document.getElementById('hum');
+                        
+                        tempElement.innerText = temperature.toFixed(1);
+                        humElement.innerText = humidity.toFixed(1);
+
+                        // 3. 視覺警報邏輯：超過 38 度變深紅色，否則回到設計紅
+                        if (temperature > 38.0) {
+                            tempElement.style.color = "#ff0000"; // 警報鮮紅
+                            tempElement.style.textShadow = "0 0 10px rgba(255,0,0,0.2)";
+                        } else {
+                            tempElement.style.color = "#e74c3c"; // 正常設計紅
+                            tempElement.style.textShadow = "none";
+                        }
+
+                        // 4. 更新時間顯示
+                        const d = new Date(feed.created_at);
+                        document.getElementById('update-time').innerText = "雲端數據同步時間：" + d.toLocaleString();
+                    }
+                })
+                .catch(err => {
+                    console.error("無法連線至 ThingSpeak:", err);
+                    document.getElementById('update-time').innerText = "連線失敗，請檢查 API Key 或網路狀態";
+                });
+        }
+
+        // 每 15 秒向雲端要求一次數據
+        setInterval(updateDashboard, 15000);
+        
+        // 網頁開啟時立即執行第一次
+        updateDashboard(); 
+    </script>
+</body>
