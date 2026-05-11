@@ -2,109 +2,224 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>義肢套即時監測平台</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>臨床級截肢套微氣候監測系統</title>
     <style>
+        :root {
+            --bg: #f4f7f6; --card-bg: #ffffff; --text: #2c3e50;
+            --primary: #3498db; --danger: #e74c3c; --success: #27ae60; --shadow: rgba(0,0,0,0.05);
+        }
+        [data-theme="dark"] {
+            --bg: #1a1a1a; --card-bg: #2d2d2d; --text: #e0e0e0; --shadow: rgba(0,0,0,0.3);
+        }
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #f0f2f5; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding-top: 50px; 
-            margin: 0;
+            font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--bg); color: var(--text);
+            margin: 0; padding: 20px; transition: 0.3s; display: flex; flex-direction: column; align-items: center;
         }
-        h2 { color: #2c3e50; margin-bottom: 30px; }
-        .dashboard { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
-        .card { 
-            background: white; 
-            padding: 30px; 
-            border-radius: 15px; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1); 
-            text-align: center; 
-            width: 180px; 
-            transition: transform 0.3s ease;
+        .header { text-align: center; margin-bottom: 20px; width: 100%; max-width: 1000px; position: relative; }
+        .theme-switch { position: absolute; right: 0; top: 0; padding: 8px 15px; border-radius: 20px; background: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; }
+        
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; max-width: 1000px; }
+        
+        /* 實驗紀錄看板：優化為五欄顯示 */
+        .session-box {
+            grid-column: 1 / -1; background: #2c3e50; color: white; border-radius: 15px; padding: 15px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-        .card:hover { transform: translateY(-5px); }
-        .value { font-size: 3em; font-weight: bold; margin: 10px 0; transition: color 0.3s ease; }
+        .session-item { text-align: center; padding: 5px; border-right: 1px solid rgba(255,255,255,0.1); }
+        .session-item:last-child { border-right: none; }
+        .session-val { font-size: 1.3em; font-weight: bold; color: #f1c40f; display: block; margin-top: 5px; }
+        .session-label { font-size: 0.75em; opacity: 0.7; letter-spacing: 1px; }
+
+        .card { background: var(--card-bg); border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px var(--shadow); text-align: center; }
+        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.85em; margin-bottom: 10px; }
+        .status-normal { background: #dff9fb; color: #27ae60; }
+        .status-alert { background: #ff7675 !important; color: white !important; animation: blink 1s infinite; }
         
-        /* 預設顏色 */
-        .temp-default { color: #e74c3c; }
-        .hum-default { color: #3498db; }
+        .value-display { font-size: 3.2em; font-weight: bold; margin: 5px 0; }
+        .unit { font-size: 0.4em; opacity: 0.7; }
+
+        .chart-container { grid-column: 1 / -1; background: #ffffff !important; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); color: #2c3e50; }
+        .chart-wrapper { width: 100%; border-radius: 8px; border: 1px solid #eee; margin-bottom: 15px; overflow: hidden; }
         
-        .label { color: #7f8c8d; font-size: 1.1em; font-weight: 500; }
-        .unit { color: #95a5a6; font-size: 0.8em; margin-left: 5px; }
-        .time { margin-top: 30px; color: #95a5a6; font-size: 0.9em; background: #fff; padding: 5px 15px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .action-group { grid-column: 1 / -1; display: flex; gap: 15px; justify-content: center; margin: 15px 0; }
+        .btn { border: none; padding: 12px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; transition: 0.3s; background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn-walking { background: var(--success); }
+        
+        @keyframes blink { 50% { opacity: 0.6; } }
     </style>
 </head>
 <body>
-    <h2>截肢套微氣候即時監測系統</h2>
-    
+
+    <div class="header">
+        <button class="theme-switch" onclick="toggleTheme()">切換主題</button>
+        <h1>臨床級截肢套微氣候監測系統</h1>
+        <p>受試者：Subject-01 | 位置：遠端 (Distal) | <span id="mode-text">淺色模式</span></p>
+    </div>
+
     <div class="dashboard">
+        <!-- 實驗摘要看板：溫濕度雙指標 -->
+        <div class="session-box">
+            <div class="session-item">
+                <span class="session-label">實驗狀態</span>
+                <span id="session-status" class="session-val" style="color: #55efc4;">待命中</span>
+            </div>
+            <div class="session-item">
+                <span class="session-label">基準點 (Baseline)</span>
+                <span id="base-val" class="session-val">-- / --</span>
+            </div>
+            <div class="session-item">
+                <span class="session-label">溫度變動 (ΔT)</span>
+                <span id="delta-temp" class="session-val">--</span>
+            </div>
+            <div class="session-item">
+                <span class="session-label">濕度變動 (ΔH)</span>
+                <span id="delta-hum" class="session-val">--</span>
+            </div>
+            <div class="session-item">
+                <span class="session-label">持續時間</span>
+                <span id="session-timer" class="session-val">00:00</span>
+            </div>
+        </div>
+
+        <!-- 數據顯示卡片 -->
         <div class="card">
-            <div class="label">目前溫度</div>
-            <div id="temp" class="value temp-default">--</div>
-            <div class="label">°C</div>
+            <div id="temp-status" class="status-badge status-normal">狀態：正常</div>
+            <div class="label" style="font-weight: bold; opacity: 0.6;">即時溫度</div>
+            <div id="temp" class="value-display" style="color: var(--danger);">--<span class="unit">°C</span></div>
+            <div id="temp-advice" style="font-size: 0.85em; opacity: 0.8;">數據讀取中...</div>
         </div>
 
         <div class="card">
-            <div class="label">目前濕度</div>
-            <div id="hum" class="value hum-default">--</div>
-            <div class="label">%</div>
+            <div id="hum-status" class="status-badge" style="background: #e3f2fd; color: #3498db;">狀態：良好</div>
+            <div class="label" style="font-weight: bold; opacity: 0.6;">即時濕度</div>
+            <div id="hum" class="value-display" style="color: var(--primary);">--<span class="unit">%</span></div>
+            <div id="hum-advice" style="font-size: 0.85em; opacity: 0.8;">數據讀取中...</div>
+        </div>
+
+        <!-- 行為按鈕 -->
+        <div class="action-group">
+            <button class="btn" onclick="logEvent('Rest')">☕ 休息/結束標記</button>
+            <button class="btn btn-walking" onclick="logEvent('Walking')">🏃 步行開始</button>
+        </div>
+
+        <!-- 圖表區 -->
+        <div class="chart-container">
+            <h3 style="margin: 0 0 15px 0;">雲端數據趨勢分析</h3>
+            <div class="chart-wrapper">
+                <iframe width="100%" height="240" src="https://thingspeak.com/channels/2159361/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&title=Temperature_History"></iframe>
+            </div>
+            <div class="chart-wrapper">
+                <iframe width="100%" height="240" src="https://thingspeak.com/channels/2159361/charts/2?bgcolor=%23ffffff&color=%2333a1de&dynamic=true&results=60&title=Humidity_History"></iframe>
+            </div>
         </div>
     </div>
 
-    <div id="update-time" class="time">最後更新：載入中...</div>
-
     <script>
-        // ==========================================
-        // *** 請在這裡填入你的 ThingSpeak 資料 ***
-        const channelID = "2159361"; 
-        const readKey = "5EJNKI3GHNGVBTO9"; 
-        // ==========================================
+        let currentT = 0;
+        let currentH = 0;
+        let baseT = null;
+        let baseH = null;
+        let startTime = null;
+        let timerInterval = null;
 
-        const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${readKey}&results=1`;
-
-        function updateDashboard() {
-            fetch(url)
-                .then(res => res.json())
-                .then(data => {
-                    const feed = data.feeds[0];
-                    if (feed) {
-                        // 1. 抓取並轉換數據
-                        const temperature = parseFloat(feed.field1);
-                        const humidity = parseFloat(feed.field2);
-
-                        // 2. 更新網頁文字
-                        const tempElement = document.getElementById('temp');
-                        const humElement = document.getElementById('hum');
-                        
-                        tempElement.innerText = temperature.toFixed(1);
-                        humElement.innerText = humidity.toFixed(1);
-
-                        // 3. 視覺警報邏輯：超過 38 度變深紅色，否則回到設計紅
-                        if (temperature > 38.0) {
-                            tempElement.style.color = "#ff0000"; // 警報鮮紅
-                            tempElement.style.textShadow = "0 0 10px rgba(255,0,0,0.2)";
-                        } else {
-                            tempElement.style.color = "#e74c3c"; // 正常設計紅
-                            tempElement.style.textShadow = "none";
-                        }
-
-                        // 4. 更新時間顯示
-                        const d = new Date(feed.created_at);
-                        document.getElementById('update-time').innerText = "雲端數據同步時間：" + d.toLocaleString();
-                    }
-                })
-                .catch(err => {
-                    console.error("無法連線至 ThingSpeak:", err);
-                    document.getElementById('update-time').innerText = "連線失敗，請檢查 API Key 或網路狀態";
-                });
+        function toggleTheme() {
+            const body = document.documentElement;
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            document.getElementById('mode-text').innerText = isDark ? '淺色模式' : '深色模式';
         }
 
-        // 每 15 秒向雲端要求一次數據
+        // 實驗紀錄邏輯 (雙指標版)
+        function logEvent(type) {
+            if (type === 'Walking') {
+                baseT = currentT;
+                baseH = currentH;
+                startTime = new Date();
+                document.getElementById('session-status').innerText = "步行中";
+                document.getElementById('session-status').style.color = "#f1c40f";
+                document.getElementById('base-val').innerText = `${baseT.toFixed(1)}°C / ${baseH.toFixed(0)}%`;
+                
+                if(timerInterval) clearInterval(timerInterval);
+                timerInterval = setInterval(updateSessionInfo, 1000);
+                alert("實驗開始！已鎖定目前溫濕度作為研究基準。");
+            } else {
+                clearInterval(timerInterval);
+                document.getElementById('session-status').innerText = "休息/終止";
+                document.getElementById('session-status').style.color = "#55efc4";
+                alert("已標記休息。");
+            }
+        }
+
+        function updateSessionInfo() {
+            const now = new Date();
+            const diff = Math.floor((now - startTime) / 1000);
+            const min = String(Math.floor(diff / 60)).padStart(2, '0');
+            const sec = String(diff % 60).padStart(2, '0');
+            document.getElementById('session-timer').innerText = `${min}:${sec}`;
+            
+            // 計算溫度差
+            if (baseT !== null) {
+                const dT = currentT - baseT;
+                const dTEl = document.getElementById('delta-temp');
+                dTEl.innerText = (dT >= 0 ? "+" : "") + dT.toFixed(1) + "°C";
+                dTEl.style.color = dT > 2.0 ? "#ff7675" : "#f1c40f";
+            }
+            
+            // 計算濕度差
+            if (baseH !== null) {
+                const dH = currentH - baseH;
+                const dHEl = document.getElementById('delta-hum');
+                dHEl.innerText = (dH >= 0 ? "+" : "") + dH.toFixed(0) + "%";
+                dHEl.style.color = dH > 15 ? "#ff7675" : "#f1c40f";
+            }
+        }
+
+        const url = `https://api.thingspeak.com/channels/2159361/feeds.json?api_key=5EJNKI3GHNGVBTO9&results=1`;
+
+        function updateDashboard() {
+            fetch(url).then(res => res.json()).then(data => {
+                const feed = data.feeds[0];
+                if (!feed) return;
+
+                currentT = parseFloat(feed.field1);
+                currentH = parseFloat(feed.field2);
+
+                document.getElementById('temp').innerHTML = `${currentT.toFixed(1)}<span class="unit">°C</span>`;
+                document.getElementById('hum').innerHTML = `${currentH.toFixed(1)}<span class="unit">%</span>`;
+
+                // 臨床邏輯門檻
+                const ts = document.getElementById('temp-status');
+                const ta = document.getElementById('temp-advice');
+                if (currentT >= 37.5) {
+                    ts.innerText = "狀態：🔥 高熱警戒"; ts.className = "status-badge status-alert";
+                    ta.innerText = "建議立即移除義肢散熱";
+                } else if (currentT >= 35.5) {
+                    ts.innerText = "狀態：⚠️ 持續升溫"; ts.className = "status-badge";
+                    ts.style.background = "#ffeaa7"; ts.style.color = "#d63031";
+                    ta.innerText = "提醒：偵測到熱能累積中";
+                } else {
+                    ts.innerText = "狀態：正常"; ts.className = "status-badge status-normal";
+                    ts.style.background = "#dff9fb"; ts.style.color = "#27ae60";
+                    ta.innerText = "溫度維持在正常區間";
+                }
+
+                const hs = document.getElementById('hum-status');
+                const ha = document.getElementById('hum-advice');
+                if (currentH >= 75.0) {
+                    hs.innerText = "狀態：💧 濕度過高"; hs.className = "status-badge status-alert";
+                    ha.innerText = "警告：皮膚浸潤風險高";
+                } else {
+                    hs.innerText = "狀態：良好"; hs.className = "status-badge";
+                    hs.style.background = "#e3f2fd"; hs.style.color = "#3498db";
+                    ha.innerText = "皮膚介面乾爽穩定";
+                }
+            });
+        }
+
         setInterval(updateDashboard, 15000);
-        
-        // 網頁開啟時立即執行第一次
-        updateDashboard(); 
+        updateDashboard();
     </script>
 </body>
+</html>
